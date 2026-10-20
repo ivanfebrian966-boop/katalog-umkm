@@ -9,9 +9,46 @@ create table if not exists public.produk (
   harga integer not null check (harga >= 0),
   deskripsi text,
   foto_url text,
+  foto_urls text[] not null default '{}',
   kategori text,
+  stok integer not null default 1 check (stok >= 0),
+  harga_diskon integer check (harga_diskon is null or (harga_diskon >= 0 and harga_diskon < harga)),
+  badge text,
   created_at timestamptz not null default now()
 );
+
+-- Kolom tambahan untuk galeri foto (US-18); aman dijalankan pada tabel yang sudah ada.
+alter table public.produk
+  add column if not exists foto_urls text[] not null default '{}';
+
+-- Kolom tambahan untuk stok dan promo (US-19, US-20); aman dijalankan ulang.
+alter table public.produk
+  add column if not exists stok integer not null default 1,
+  add column if not exists harga_diskon integer,
+  add column if not exists badge text;
+
+-- Kategori toko untuk pilihan terkelola di form produk (US-31).
+create table if not exists public.kategori_toko (
+  id bigint generated always as identity primary key,
+  nama text not null unique,
+  created_at timestamptz not null default now()
+);
+
+alter table public.kategori_toko enable row level security;
+
+drop policy if exists "admin_baca_kategori_toko" on public.kategori_toko;
+drop policy if exists "admin_tambah_kategori_toko" on public.kategori_toko;
+drop policy if exists "admin_ubah_kategori_toko" on public.kategori_toko;
+drop policy if exists "admin_hapus_kategori_toko" on public.kategori_toko;
+
+create policy "admin_baca_kategori_toko" on public.kategori_toko
+  for select to authenticated using (true);
+create policy "admin_tambah_kategori_toko" on public.kategori_toko
+  for insert to authenticated with check (true);
+create policy "admin_ubah_kategori_toko" on public.kategori_toko
+  for update to authenticated using (true) with check (true);
+create policy "admin_hapus_kategori_toko" on public.kategori_toko
+  for delete to authenticated using (true);
 
 -- 2. Row Level Security
 -- Tidak ada izin untuk publik: akses langsung ke tabel dari luar aplikasi ditolak.
@@ -34,6 +71,24 @@ create policy "admin_ubah_produk" on public.produk
 
 create policy "admin_hapus_produk" on public.produk
   for delete to authenticated using (true);
+
+-- 2a. Supabase Storage untuk foto produk (US-29).
+insert into storage.buckets (id, name, public)
+values ('foto-produk', 'foto-produk', true)
+on conflict (id) do update set public = excluded.public;
+
+drop policy if exists "admin_unggah_foto_produk" on storage.objects;
+drop policy if exists "admin_ubah_foto_produk" on storage.objects;
+drop policy if exists "admin_hapus_foto_produk" on storage.objects;
+
+create policy "admin_unggah_foto_produk" on storage.objects
+  for insert to authenticated with check (bucket_id = 'foto-produk');
+
+create policy "admin_ubah_foto_produk" on storage.objects
+  for update to authenticated using (bucket_id = 'foto-produk') with check (bucket_id = 'foto-produk');
+
+create policy "admin_hapus_foto_produk" on storage.objects
+  for delete to authenticated using (bucket_id = 'foto-produk');
 
 -- 3. Data produk awal (hanya diisi jika tabel masih kosong)
 insert into public.produk (nama, harga, deskripsi, foto_url, kategori)
@@ -88,3 +143,9 @@ select
 from kategori k
 cross join lateral unnest(k.daftar) with ordinality as p (nama, ke)
 where not exists (select 1 from public.produk where deskripsi like 'Contoh untuk uji paginasi%');
+
+insert into public.kategori_toko (nama)
+select distinct kategori
+from public.produk
+where kategori is not null and btrim(kategori) <> ''
+on conflict (nama) do nothing;

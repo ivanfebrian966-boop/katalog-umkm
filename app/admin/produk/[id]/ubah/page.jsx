@@ -1,24 +1,55 @@
 import { notFound } from "next/navigation";
 import NavAdmin from "@/components/NavAdmin";
 import FormProduk from "@/components/FormProduk";
-import CatatanBelumAktif from "@/components/CatatanBelumAktif";
-import { cariProdukContoh } from "@/lib/data-contoh";
+import { ubahProduk } from "@/app/admin/actions";
+import { requireAdmin } from "@/lib/supabase/session";
 
-// US-09 (bonus di jalur offline): ubah produk.
-export default async function HalamanUbahProduk({ params }) {
+export default async function HalamanUbahProduk({ params, searchParams }) {
   const { id } = await params;
-  const produk = cariProdukContoh(id);
+  const { status } = await searchParams;
+  const supabase = await requireAdmin();
+  const { data: produk, error } = await supabase
+    .from("produk")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  const { data: daftarKategori, error: errorKategori } = await supabase
+    .from("kategori_toko")
+    .select("id, nama")
+    .order("nama");
+  if (errorKategori) throw errorKategori;
 
   if (!produk) {
     notFound();
   }
 
+  const pesanStatus =
+    status === "input"
+      ? "Data produk tidak valid. Periksa nama, harga, stok, dan harga diskon."
+      : status === "file-terlalu-besar"
+        ? "Ukuran foto melebihi 5 MB. Pilih file yang lebih kecil."
+        : status === "file-tidak-valid"
+          ? "Pilih file gambar JPEG, PNG, WebP, atau AVIF yang valid."
+          : status === "unggah-gagal"
+            ? "Foto gagal diunggah. Pastikan Storage sudah disiapkan, lalu coba lagi."
+            : null;
+
   return (
     <div className="flex flex-col gap-6 py-8">
       <NavAdmin />
       <h1 className="text-2xl font-extrabold">Ubah produk</h1>
-      <CatatanBelumAktif>Simpan perubahan belum berfungsi: lihat US-09.</CatatanBelumAktif>
-      <FormProduk produk={produk} labelTombol="Simpan perubahan" />
+      {pesanStatus ? <p role="alert" className="text-sm text-bahaya">{pesanStatus}</p> : null}
+      <FormProduk
+        action={ubahProduk}
+        daftarKategori={daftarKategori || []}
+        produk={produk}
+        labelTombol="Simpan perubahan"
+      />
     </div>
   );
 }

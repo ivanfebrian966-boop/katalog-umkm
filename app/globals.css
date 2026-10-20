@@ -31,3 +31,17 @@ html {
   outline: 3px solid var(--color-utama);
   outline-offset: 2px;
 }
+
+html[data-tema="gelap"] {
+  color-scheme: dark;
+  --color-latar: #111a16;
+  --color-permukaan: #1b2821;
+  --color-garis: #34463b;
+  --color-teks: #e7eee9;
+  --color-teks-lembut: #b3c2b9;
+  --color-utama: #54b58b;
+  --color-utama-gelap: #28744f;
+  --color-harga: #ffdb90;
+  --color-harga-latar: #4a3715;
+  --color-bahaya: #ff8176;
+}

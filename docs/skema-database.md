@@ -9,8 +9,16 @@
 | `harga` | integer | Harga dalam rupiah, tidak boleh negatif |
 | `deskripsi` | text | Penjelasan produk |
 | `foto_url` | text | Link gambar produk |
+| `foto_urls` | text[] | Link foto untuk galeri produk |
 | `kategori` | text | Kelompok produk, misalnya "Camilan" |
+| `stok` | integer | Jumlah stok, nilai 0 berarti habis |
+| `harga_diskon` | integer | Harga promo opsional, harus lebih rendah dari harga normal |
+| `badge` | text | Label opsional "Baru" atau "Terlaris" |
 | `created_at` | timestamptz | Waktu dibuat, otomatis |
+
+## Foto produk
+
+Foto unggahan disimpan dalam bucket publik `foto-produk`. Hanya pengguna terautentikasi yang dapat mengunggah, mengubah, atau menghapus objek. Jalankan ulang `docs/schema.sql` di Supabase SQL Editor untuk menerapkan kolom produk tambahan, bucket, dan kebijakan Storage.
 
 ## Aturan akses (RLS)
 

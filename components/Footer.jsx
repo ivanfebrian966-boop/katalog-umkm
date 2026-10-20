@@ -13,6 +13,9 @@ export default function Footer() {
         <Link href="/admin" className="self-start underline underline-offset-4 hover:text-utama">
           Masuk sebagai admin
         </Link>
+        <Link href="/tentang" className="self-start underline underline-offset-4 hover:text-utama">
+          Tentang dan kontak
+        </Link>
       </div>
     </footer>
   );
