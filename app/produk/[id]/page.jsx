@@ -10,21 +10,15 @@ export const dynamic = "force-dynamic";
 export default async function HalamanDetailProduk({ params }) {
   const { id } = await params;
 
-  let produk = null;
+  const supabase = createServerClient();
+  const { data: produk, error } = await supabase
+    .from("produk")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
 
-  try {
-    const supabase = createServerClient();
-    const { data, error } = await supabase
-      .from("produk")
-      .select("*")
-      .eq("id", id)
-      .maybeSingle();
-
-    if (!error && data) {
-      produk = data;
-    }
-  } catch (err) {
-    // Jika terjadi error saat memanggil Supabase, arahkan ke notFound
+  if (error) {
+    throw error;
   }
 
   if (!produk) {
