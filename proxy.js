@@ -69,9 +69,15 @@ export async function proxy(request) {
       },
     });
 
-    const { data } = await supabase.auth.getUser();
+    let user;
+    try {
+      const { data, error } = await supabase.auth.getUser();
+      if (!error) user = data.user;
+    } catch {
+      console.error("Pemeriksaan sesi admin di proxy gagal; akses ditolak.");
+    }
 
-    if (!data.user) {
+    if (!user) {
       const loginUrl = new URL("/admin/login", request.url);
       loginUrl.searchParams.set("next", request.nextUrl.pathname);
       const redirectResponse = NextResponse.redirect(loginUrl);
