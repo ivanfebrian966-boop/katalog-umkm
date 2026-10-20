@@ -4,6 +4,7 @@ import PesanProduk from "@/components/PesanProduk";
 import KartuProduk from "@/components/KartuProduk";
 import GaleriProduk from "@/components/GaleriProduk";
 import BagikanProduk from "@/components/BagikanProduk";
+import { CatatProdukDilihat } from "@/components/TerakhirDilihat";
 import { formatRupiah } from "@/lib/format";
 import { toko } from "@/lib/toko";
 import { createServerClient } from "@/lib/supabase";
@@ -17,6 +18,7 @@ export async function generateMetadata({ params }) {
     .from("produk")
     .select("nama, deskripsi, foto_url, foto_urls")
     .eq("id", id)
+    .eq("aktif", true)
     .maybeSingle();
 
   if (error) {
@@ -48,6 +50,7 @@ export default async function HalamanDetailProduk({ params }) {
     .from("produk")
     .select("*")
     .eq("id", id)
+    .eq("aktif", true)
     .maybeSingle();
 
   if (error) {
@@ -64,6 +67,7 @@ export default async function HalamanDetailProduk({ params }) {
       .from("produk")
       .select("*")
       .eq("kategori", produk.kategori)
+      .eq("aktif", true)
       .neq("id", produk.id)
       .order("created_at", { ascending: false })
       .limit(4);
@@ -77,6 +81,7 @@ export default async function HalamanDetailProduk({ params }) {
 
   return (
     <>
+      <CatatProdukDilihat produk={produk} />
       <article className="grid gap-8 py-8 md:grid-cols-2 md:py-12">
         <GaleriProduk fotoUrl={produk.foto_url} fotoUrls={produk.foto_urls} nama={produk.nama} />
         <div className="flex flex-col gap-4">

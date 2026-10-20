@@ -14,6 +14,7 @@ create table if not exists public.produk (
   stok integer not null default 1 check (stok >= 0),
   harga_diskon integer check (harga_diskon is null or (harga_diskon >= 0 and harga_diskon < harga)),
   badge text,
+  aktif boolean not null default true,
   created_at timestamptz not null default now()
 );
 
@@ -25,7 +26,8 @@ alter table public.produk
 alter table public.produk
   add column if not exists stok integer not null default 1,
   add column if not exists harga_diskon integer,
-  add column if not exists badge text;
+  add column if not exists badge text,
+  add column if not exists aktif boolean not null default true;
 
 -- Kategori toko untuk pilihan terkelola di form produk (US-31).
 create table if not exists public.kategori_toko (

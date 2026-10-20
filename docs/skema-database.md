@@ -14,6 +14,7 @@
 | `stok` | integer | Jumlah stok, nilai 0 berarti habis |
 | `harga_diskon` | integer | Harga promo opsional, harus lebih rendah dari harga normal |
 | `badge` | text | Label opsional "Baru" atau "Terlaris" |
+| `aktif` | boolean | Status publik produk; default aktif |
 | `created_at` | timestamptz | Waktu dibuat, otomatis |
 
 ## Foto produk

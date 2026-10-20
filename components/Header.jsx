@@ -3,6 +3,7 @@ import { toko } from "@/lib/toko";
 import TautanKeranjang from "@/components/TautanKeranjang";
 import TautanFavorit from "@/components/TautanFavorit";
 import TombolTema from "@/components/TombolTema";
+import TautanBandingkan from "@/components/TautanBandingkan";
 
 export default function Header() {
   return (
@@ -15,6 +16,7 @@ export default function Header() {
           <TombolTema />
           <TautanFavorit />
           <TautanKeranjang />
+          <TautanBandingkan />
         </div>
       </div>
     </header>

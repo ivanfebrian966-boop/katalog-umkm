@@ -1,6 +1,7 @@
 import KartuProduk from "@/components/KartuProduk";
 import { toko } from "@/lib/toko";
 import { createServerClient } from "@/lib/supabase";
+import BagianTerakhirDilihat from "@/components/TerakhirDilihat";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +26,7 @@ export default async function HalamanKatalog({ searchParams }) {
     const { data: kategoriData, error: errorKategori } = await supabase
       .from("produk")
       .select("kategori")
+      .eq("aktif", true)
       .not("kategori", "is", null)
       .order("kategori");
 
@@ -34,7 +36,7 @@ export default async function HalamanKatalog({ searchParams }) {
 
     daftarKategori = [...new Set(kategoriData.map((produk) => produk.kategori).filter(Boolean))];
     const ambilHalaman = async (nomorHalaman) => {
-      let query = supabase.from("produk").select("*", { count: "exact" });
+      let query = supabase.from("produk").select("*", { count: "exact" }).eq("aktif", true);
 
       if (pencarian) {
         query = query.ilike("nama", `%${pencarian}%`);
@@ -186,6 +188,7 @@ export default async function HalamanKatalog({ searchParams }) {
           </nav>
         ) : null}
       </section>
+      <BagianTerakhirDilihat />
     </>
   );
 }

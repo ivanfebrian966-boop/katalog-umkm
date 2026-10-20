@@ -1,16 +1,18 @@
 import { formatRupiah } from "@/lib/format";
 import Tombol from "@/components/Tombol";
 import TombolHapusProduk from "@/components/TombolHapusProduk";
+import { ubahStatusProduk } from "@/app/admin/actions";
 
 export default function TabelProduk({ daftarProduk }) {
   return (
     <div className="overflow-x-auto rounded-2xl border border-garis">
-      <table className="w-full min-w-[560px] text-left text-sm">
+      <table className="w-full min-w-[760px] text-left text-sm">
         <thead className="bg-permukaan text-teks-lembut">
           <tr>
             <th className="px-4 py-3 font-semibold">Produk</th>
             <th className="px-4 py-3 font-semibold">Kategori</th>
             <th className="px-4 py-3 font-semibold">Harga</th>
+            <th className="px-4 py-3 font-semibold">Status</th>
             <th className="px-4 py-3 font-semibold">
               <span className="sr-only">Aksi</span>
             </th>
@@ -27,6 +29,18 @@ export default function TabelProduk({ daftarProduk }) {
               </td>
               <td className="px-4 py-3 text-teks-lembut">{produk.kategori}</td>
               <td className="px-4 py-3">{formatRupiah(produk.harga)}</td>
+              <td className="px-4 py-3">
+                <form action={ubahStatusProduk}>
+                  <input type="hidden" name="id" value={produk.id} />
+                  <input type="hidden" name="aktif" value={String(produk.aktif !== false)} />
+                  <button
+                    type="submit"
+                    className={`text-xs font-semibold underline ${produk.aktif === false ? "text-bahaya" : "text-utama"}`}
+                  >
+                    {produk.aktif === false ? "Aktifkan" : "Nonaktifkan"}
+                  </button>
+                </form>
+              </td>
               <td className="px-4 py-3">
                 <div className="flex justify-end gap-2">
                   <Tombol href={`/admin/produk/${produk.id}/ubah`} varian="garis">

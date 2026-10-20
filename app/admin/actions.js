@@ -4,51 +4,56 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createSupabaseSessionClient, requireAdmin } from "@/lib/supabase/session";
 
-function bacaDataProduk(formData, urlInputTidakValid) {
+function bacaDataProduk(formData) {
   const nama = formData.get("nama");
   const harga = formData.get("harga");
-
-  if (typeof nama !== "string" || !nama.trim()) {
-    redirect(`${urlInputTidakValid}?status=input`);
-  }
-
   const hargaAngka = Number(harga);
-  if (
-    typeof harga !== "string" ||
-    !harga.trim() ||
-    !Number.isSafeInteger(hargaAngka) ||
-    hargaAngka < 0
-  ) {
-    redirect(`${urlInputTidakValid}?status=input`);
-  }
-
   const kategori = formData.get("kategori");
   const fotoUrl = formData.get("foto_url");
   const daftarFoto = formData.get("foto_urls");
   const deskripsi = formData.get("deskripsi");
   const stok = formData.get("stok");
   const stokAngka = stok === null || stok === "" ? 1 : Number(stok);
-  if (
-    (stok !== null && typeof stok !== "string") ||
-    !Number.isSafeInteger(stokAngka) ||
-    stokAngka < 0
-  ) {
-    redirect(`${urlInputTidakValid}?status=input`);
-  }
-
   const hargaDiskon = formData.get("harga_diskon");
   const hargaDiskonAngka = hargaDiskon === null || hargaDiskon === "" ? null : Number(hargaDiskon);
+  const badge = formData.get("badge");
+  const errors = {};
+  const nilaiString = (nilai) => (typeof nilai === "string" ? nilai : "");
+  const values = {
+    nama: nilaiString(nama),
+    harga: nilaiString(harga),
+    kategori: nilaiString(kategori),
+    foto_urls: nilaiString(daftarFoto) || nilaiString(fotoUrl),
+    deskripsi: nilaiString(deskripsi),
+    stok: nilaiString(stok),
+    harga_diskon: nilaiString(hargaDiskon),
+    badge: nilaiString(badge),
+  };
+
+  if (typeof nama !== "string" || !nama.trim()) errors.nama = "Nama produk wajib diisi.";
+  else if (nama.trim().length > 150) errors.nama = "Nama produk maksimal 150 karakter.";
+  if (typeof harga !== "string" || !harga.trim() || !Number.isSafeInteger(hargaAngka) || hargaAngka <= 0) {
+    errors.harga = "Harga harus berupa bilangan bulat lebih dari 0.";
+  }
+  if ((stok !== null && typeof stok !== "string") || !Number.isSafeInteger(stokAngka) || stokAngka < 0) {
+    errors.stok = "Stok harus berupa bilangan bulat minimal 0.";
+  }
   if (
     hargaDiskonAngka !== null &&
-    (!Number.isSafeInteger(hargaDiskonAngka) || hargaDiskonAngka < 0 || hargaDiskonAngka >= hargaAngka)
+    (!Number.isSafeInteger(hargaDiskonAngka) || hargaDiskonAngka <= 0 || hargaDiskonAngka >= hargaAngka)
   ) {
-    redirect(`${urlInputTidakValid}?status=input`);
+    errors.harga_diskon = "Harga diskon harus lebih dari 0 dan lebih rendah dari harga normal.";
   }
-
-  const badge = formData.get("badge");
   if (badge !== null && badge !== "" && badge !== "Baru" && badge !== "Terlaris") {
-    redirect(`${urlInputTidakValid}?status=input`);
+    errors.badge = "Pilih badge yang tersedia.";
   }
+  if (typeof kategori === "string" && kategori.length > 80) {
+    errors.kategori = "Kategori maksimal 80 karakter.";
+  }
+  if (typeof deskripsi === "string" && deskripsi.length > 5000) {
+    errors.deskripsi = "Deskripsi maksimal 5.000 karakter.";
+  }
+  if (Object.keys(errors).length > 0) return { errors, values };
 
   const fotoUrls =
     typeof daftarFoto === "string"
@@ -59,7 +64,7 @@ function bacaDataProduk(formData, urlInputTidakValid) {
       : [];
   const fotoUtama = fotoUrls[0] || (typeof fotoUrl === "string" ? fotoUrl.trim() : "");
 
-  return {
+  return { errors, values, produk: {
     nama: nama.trim(),
     harga: hargaAngka,
     kategori: typeof kategori === "string" && kategori.trim() ? kategori.trim() : null,
@@ -69,7 +74,7 @@ function bacaDataProduk(formData, urlInputTidakValid) {
     stok: stokAngka,
     harga_diskon: hargaDiskonAngka,
     badge: typeof badge === "string" && badge ? badge : null,
-  };
+  } };
 }
 
 async function unggahFotoProduk(formData, supabase, produk, urlInputTidakValid) {
@@ -177,9 +182,11 @@ export async function gantiPasswordAdmin(formData) {
   redirect("/admin/password?status=berhasil");
 }
 
-export async function tambahProduk(formData) {
+export async function tambahProduk(previousState, formData) {
   const supabase = await requireAdmin();
-  const dataProduk = bacaDataProduk(formData, "/admin/produk/baru");
+  const hasilValidasi = bacaDataProduk(formData);
+  if (Object.keys(hasilValidasi.errors).length > 0) return hasilValidasi;
+  const dataProduk = hasilValidasi.produk;
   const { produk, pathUnggahan } = await unggahFotoProduk(
     formData,
     supabase,
@@ -197,10 +204,12 @@ export async function tambahProduk(formData) {
   redirect("/admin");
 }
 
-export async function ubahProduk(formData) {
+export async function ubahProduk(previousState, formData) {
   const supabase = await requireAdmin();
   const id = formData.get("id");
-  const dataProduk = bacaDataProduk(formData, "/admin");
+  const hasilValidasi = bacaDataProduk(formData);
+  if (Object.keys(hasilValidasi.errors).length > 0) return hasilValidasi;
+  const dataProduk = hasilValidasi.produk;
 
   if (typeof id !== "string" || !/^\d+$/.test(id)) {
     redirect("/admin?status=produk-tidak-valid");
@@ -255,6 +264,30 @@ export async function hapusProduk(formData) {
   revalidatePath("/admin");
   revalidatePath(`/produk/${id}`);
   redirect("/admin");
+}
+
+export async function ubahStatusProduk(formData) {
+  const supabase = await requireAdmin();
+  const id = formData.get("id");
+  const aktifSaatIni = formData.get("aktif");
+
+  if (typeof id !== "string" || !/^\d+$/.test(id) || (aktifSaatIni !== "true" && aktifSaatIni !== "false")) {
+    redirect("/admin?status=produk-tidak-valid");
+  }
+
+  const { data, error } = await supabase
+    .from("produk")
+    .update({ aktif: aktifSaatIni !== "true" })
+    .eq("id", id)
+    .select("id")
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) redirect("/admin?status=produk-tidak-ditemukan");
+
+  revalidatePath("/admin");
+  revalidatePath("/");
+  revalidatePath(`/produk/${id}`);
+  redirect("/admin?status=status-diperbarui");
 }
 
 export async function buatDeskripsiAI(nama, kategori) {

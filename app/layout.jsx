@@ -4,6 +4,7 @@ import Footer from "@/components/Footer";
 import { KeranjangProvider } from "@/components/KeranjangProvider";
 import { FavoritProvider } from "@/components/FavoritProvider";
 import { TemaProvider } from "@/components/TemaProvider";
+import { BandingkanProvider } from "@/components/BandingkanProvider";
 import { toko } from "@/lib/toko";
 import { siteUrl } from "@/lib/site";
 
@@ -26,13 +27,15 @@ export default function RootLayout({ children }) {
       </head>
       <body className="flex min-h-screen flex-col font-sans antialiased">
         <TemaProvider>
-          <FavoritProvider>
-            <KeranjangProvider>
-              <Header />
-              <main className="mx-auto w-full max-w-5xl flex-1 px-4">{children}</main>
-              <Footer />
-            </KeranjangProvider>
-          </FavoritProvider>
+          <BandingkanProvider>
+            <FavoritProvider>
+              <KeranjangProvider>
+                <Header />
+                <main className="mx-auto w-full max-w-5xl flex-1 px-4">{children}</main>
+                <Footer />
+              </KeranjangProvider>
+            </FavoritProvider>
+          </BandingkanProvider>
         </TemaProvider>
       </body>
     </html>

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { formatRupiah } from "@/lib/format";
 import TambahKeranjang from "@/components/TambahKeranjang";
 import TombolFavorit from "@/components/TombolFavorit";
+import TombolBandingkan from "@/components/TombolBandingkan";
 
 export default function KartuProduk({ produk }) {
   const hargaTampil = produk.harga_diskon ?? produk.harga;
@@ -41,6 +42,7 @@ export default function KartuProduk({ produk }) {
         <div className="flex flex-col gap-2">
           <TambahKeranjang produk={produk} />
           <TombolFavorit produk={produk} />
+          <TombolBandingkan produk={produk} />
         </div>
       </div>
     </article>
