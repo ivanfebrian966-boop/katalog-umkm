@@ -2,7 +2,26 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
+import { createHash } from "node:crypto";
 import { createSupabaseSessionClient, requireAdmin } from "@/lib/supabase/session";
+import { createServerClient } from "@/lib/supabase";
+
+const percobaanUlasan = new Map();
+const JENDELA_RATE_LIMIT = 10 * 60 * 1000;
+
+function lewatiSpamUlasan(kunci, sekarang) {
+  const lama = (percobaanUlasan.get(kunci) || []).filter(
+    (waktu) => sekarang - waktu < JENDELA_RATE_LIMIT
+  );
+  if (lama.length >= 3) {
+    percobaanUlasan.set(kunci, lama);
+    return false;
+  }
+  lama.push(sekarang);
+  percobaanUlasan.set(kunci, lama);
+  return true;
+}
 
 function bacaDataProduk(formData) {
   const nama = formData.get("nama");
@@ -453,4 +472,178 @@ export async function hapusKategori(formData) {
 
   revalidatePath("/admin/kategori");
   redirect("/admin/kategori?status=dihapus");
+}
+
+export async function kirimUlasan(formData) {
+  const produkId = formData.get("produk_id");
+  const nama = formData.get("nama");
+  const rating = formData.get("rating");
+  const komentar = formData.get("komentar");
+  const honeypot = formData.get("website");
+
+  if (
+    typeof produkId !== "string" ||
+    !/^\d+$/.test(produkId) ||
+    typeof nama !== "string" ||
+    !nama.trim() ||
+    nama.trim().length > 80 ||
+    typeof rating !== "string" ||
+    !/^[1-5]$/.test(rating) ||
+    typeof komentar !== "string" ||
+    !komentar.trim() ||
+    komentar.trim().length > 1000
+  ) {
+    redirect(`/produk/${encodeURIComponent(String(produkId || ""))}?ulasan=tidak-valid`);
+  }
+
+  if (typeof honeypot === "string" && honeypot.trim()) {
+    redirect(`/produk/${encodeURIComponent(produkId)}?ulasan=terkirim`);
+  }
+
+  const alamat = (await headers()).get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  const kunciAnonim = createHash("sha256").update(alamat).digest("hex");
+  if (!lewatiSpamUlasan(kunciAnonim, Date.now())) {
+    redirect(`/produk/${encodeURIComponent(produkId)}?ulasan=terlalu-sering`);
+  }
+
+  const supabase = createServerClient();
+  const { data: produk, error: errorProduk } = await supabase
+    .from("produk")
+    .select("id")
+    .eq("id", produkId)
+    .eq("aktif", true)
+    .maybeSingle();
+  if (errorProduk) throw errorProduk;
+  if (!produk) redirect("/?ulasan=produk-tidak-ditemukan");
+
+  const { error } = await supabase.from("ulasan_produk").insert({
+    produk_id: produkId,
+    nama: nama.trim(),
+    rating: Number(rating),
+    komentar: komentar.trim(),
+    tampil: false,
+  });
+  if (error) throw error;
+
+  revalidatePath(`/produk/${produkId}`);
+  redirect(`/produk/${produkId}?ulasan=terkirim`);
+}
+
+export async function moderasiUlasan(formData) {
+  const supabase = await requireAdmin();
+  const id = formData.get("id");
+  const tampil = formData.get("tampil");
+  if (typeof id !== "string" || !/^\d+$/.test(id) || (tampil !== "true" && tampil !== "false")) {
+    redirect("/admin/ulasan?status=input");
+  }
+
+  const { data, error } = await supabase
+    .from("ulasan_produk")
+    .update({ tampil: tampil !== "true" })
+    .eq("id", id)
+    .select("id, produk_id")
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) redirect("/admin/ulasan?status=tidak-ditemukan");
+
+  revalidatePath("/admin/ulasan");
+  revalidatePath(`/produk/${data.produk_id}`);
+  redirect("/admin/ulasan?status=diubah");
+}
+
+export async function catatKlikPesan(produkId) {
+  if (typeof produkId !== "string" || !/^\d+$/.test(produkId)) {
+    console.error("Klik pesan WhatsApp diabaikan karena ID produk tidak valid.");
+    return;
+  }
+
+  try {
+    const supabase = createServerClient();
+    const { error } = await supabase.from("klik_pesan").insert({ produk_id: produkId });
+    if (error) {
+      console.error("Gagal mencatat klik pesan WhatsApp:", error.message);
+    }
+  } catch (error) {
+    console.error("Gagal mencatat klik pesan WhatsApp:", error.message);
+  }
+}
+
+function urlBannerValid(nilai) {
+  if (nilai === "") return true;
+  if (typeof nilai !== "string" || nilai.length > 2000) return false;
+  if (nilai.startsWith("/") && !nilai.startsWith("//")) return true;
+  try {
+    return new URL(nilai).protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+export async function simpanBanner(formData) {
+  const supabase = await requireAdmin();
+  const id = formData.get("id");
+  const judul = formData.get("judul");
+  const teks = formData.get("teks");
+  const gambarUrl = formData.get("gambar_url");
+  const tautan = formData.get("tautan");
+  const aktif = formData.get("aktif") === "true";
+
+  if (
+    typeof judul !== "string" ||
+    !judul.trim() ||
+    judul.trim().length > 120 ||
+    typeof teks !== "string" ||
+    teks.length > 1000 ||
+    typeof gambarUrl !== "string" ||
+    !urlBannerValid(gambarUrl.trim()) ||
+    typeof tautan !== "string" ||
+    !urlBannerValid(tautan.trim())
+  ) {
+    redirect("/admin/banner?status=input");
+  }
+
+  const nilai = {
+    judul: judul.trim(),
+    teks: teks.trim() || null,
+    gambar_url: gambarUrl.trim() || null,
+    tautan: tautan.trim() || null,
+    aktif,
+  };
+
+  if (typeof id === "string" && id) {
+    if (!/^\d+$/.test(id)) redirect("/admin/banner?status=input");
+    const { data, error } = await supabase
+      .from("banner_promo")
+      .update(nilai)
+      .eq("id", id)
+      .select("id")
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) redirect("/admin/banner?status=tidak-ditemukan");
+  } else {
+    const { error } = await supabase.from("banner_promo").insert(nilai);
+    if (error) throw error;
+  }
+
+  revalidatePath("/admin/banner");
+  revalidatePath("/");
+  redirect("/admin/banner?status=tersimpan");
+}
+
+export async function ubahStatusBanner(formData) {
+  const supabase = await requireAdmin();
+  const id = formData.get("id");
+  const aktif = formData.get("aktif");
+  if (typeof id !== "string" || !/^\d+$/.test(id) || (aktif !== "true" && aktif !== "false")) {
+    redirect("/admin/banner?status=input");
+  }
+
+  const { error } = await supabase
+    .from("banner_promo")
+    .update({ aktif: aktif !== "true" })
+    .eq("id", id);
+  if (error) throw error;
+  revalidatePath("/admin/banner");
+  revalidatePath("/");
+  redirect("/admin/banner?status=tersimpan");
 }

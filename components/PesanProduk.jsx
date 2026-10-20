@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { toko } from "@/lib/toko";
 import { formatRupiah } from "@/lib/format";
+import { catatKlikPesan } from "@/app/admin/actions";
 
 export default function PesanProduk({ produk }) {
   const [jumlah, setJumlah] = useState(1);
@@ -49,6 +50,9 @@ export default function PesanProduk({ produk }) {
           href={urlWhatsApp}
           target="_blank"
           rel="noopener noreferrer"
+          onClick={() => {
+            void catatKlikPesan(String(produk.id));
+          }}
           className="inline-flex w-full items-center justify-center rounded-lg bg-utama px-5 py-3 font-semibold text-white hover:bg-utama-gelap sm:w-auto"
         >
           Pesan via WhatsApp

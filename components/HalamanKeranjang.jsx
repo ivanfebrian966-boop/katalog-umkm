@@ -4,6 +4,7 @@ import Link from "next/link";
 import { toko } from "@/lib/toko";
 import { formatRupiah } from "@/lib/format";
 import { useKeranjang } from "@/components/KeranjangProvider";
+import { catatKlikPesan } from "@/app/admin/actions";
 
 export default function HalamanKeranjang() {
   const { items, siap, setQuantity, removeItem } = useKeranjang();
@@ -76,6 +77,11 @@ export default function HalamanKeranjang() {
             href={urlWhatsApp}
             target="_blank"
             rel="noopener noreferrer"
+            onClick={() => {
+              items.forEach((item) => {
+                void catatKlikPesan(String(item.id));
+              });
+            }}
             className="inline-flex self-start items-center justify-center rounded-lg bg-utama px-5 py-3 font-semibold text-white hover:bg-utama-gelap"
           >
             Pesan semua via WhatsApp

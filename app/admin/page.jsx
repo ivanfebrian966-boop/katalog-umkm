@@ -46,6 +46,27 @@ export default async function HalamanAdmin({ searchParams }) {
       jumlah.set(kategori, (jumlah.get(kategori) || 0) + 1);
       return jumlah;
     }, new Map());
+  const { data: produkTerlarisData, error: errorTerlaris } = await supabase.rpc(
+    "produk_terlaris_admin"
+  );
+  if (errorTerlaris) throw errorTerlaris;
+
+  let produkTerlaris = [];
+  if (produkTerlarisData?.length) {
+    const idProdukTerlaris = produkTerlarisData.map((item) => item.produk_id);
+    const { data, error } = await supabase
+      .from("produk")
+      .select("id, nama")
+      .in("id", idProdukTerlaris);
+    if (error) throw error;
+    const berdasarkanId = new Map((data || []).map((produk) => [String(produk.id), produk]));
+    produkTerlaris = produkTerlarisData
+      .map((item) => ({
+        ...berdasarkanId.get(String(item.produk_id)),
+        totalKlik: item.total_klik,
+      }))
+      .filter((produk) => produk.id !== undefined);
+  }
 
   const paramsNavigasi = new URLSearchParams();
   if (pencarian) paramsNavigasi.set("q", pencarian);
@@ -91,6 +112,21 @@ export default async function HalamanAdmin({ searchParams }) {
           </ul>
         ) : (
           <p className="text-sm text-teks-lembut">Belum ada kategori produk.</p>
+        )}
+      </section>
+      <section aria-labelledby="produk-terlaris" className="flex flex-col gap-3 rounded-2xl border border-garis p-4">
+        <h2 id="produk-terlaris" className="font-bold">Produk terlaris berdasarkan klik pesan</h2>
+        {produkTerlaris.length === 0 ? (
+          <p className="text-sm text-teks-lembut">Belum ada data klik pesan WhatsApp.</p>
+        ) : (
+          <ol className="flex flex-col gap-2">
+            {produkTerlaris.map((produk) => (
+              <li key={produk.id} className="flex justify-between gap-3 text-sm">
+                <span>{produk.nama}</span>
+                <span className="font-semibold">{produk.totalKlik} klik</span>
+              </li>
+            ))}
+          </ol>
         )}
       </section>
       <form action="/admin" className="flex flex-wrap items-end gap-3">

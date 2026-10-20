@@ -13,6 +13,12 @@ export default function NavAdmin() {
       <Link href="/admin/kategori" className="font-semibold hover:text-utama">
         Kategori
       </Link>
+      <Link href="/admin/ulasan" className="font-semibold hover:text-utama">
+        Ulasan
+      </Link>
+      <Link href="/admin/banner" className="font-semibold hover:text-utama">
+        Banner promo
+      </Link>
       <form action={logoutAdmin} className="ml-auto">
         <button type="submit" className="text-teks-lembut hover:text-bahaya">
           Keluar

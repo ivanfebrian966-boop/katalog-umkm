@@ -5,6 +5,7 @@ import KartuProduk from "@/components/KartuProduk";
 import GaleriProduk from "@/components/GaleriProduk";
 import BagikanProduk from "@/components/BagikanProduk";
 import { CatatProdukDilihat } from "@/components/TerakhirDilihat";
+import UlasanProduk from "@/components/UlasanProduk";
 import { formatRupiah } from "@/lib/format";
 import { toko } from "@/lib/toko";
 import { createServerClient } from "@/lib/supabase";
@@ -42,8 +43,9 @@ export async function generateMetadata({ params }) {
 }
 
 // US-02: mengambil satu produk dari Supabase berdasarkan id, di sisi server.
-export default async function HalamanDetailProduk({ params }) {
+export default async function HalamanDetailProduk({ params, searchParams }) {
   const { id } = await params;
+  const { ulasan: statusUlasan } = await searchParams;
 
   const supabase = createServerClient();
   const { data: produk, error } = await supabase
@@ -61,23 +63,30 @@ export default async function HalamanDetailProduk({ params }) {
     notFound();
   }
 
-  let produkTerkait = [];
-  if (produk.kategori) {
-    const { data: terkait, error: errorTerkait } = await supabase
-      .from("produk")
-      .select("*")
-      .eq("kategori", produk.kategori)
-      .eq("aktif", true)
-      .neq("id", produk.id)
+  const [hasilTerkait, hasilUlasan] = await Promise.all([
+    produk.kategori
+      ? supabase
+          .from("produk")
+          .select("*")
+          .eq("kategori", produk.kategori)
+          .eq("aktif", true)
+          .neq("id", produk.id)
+          .order("created_at", { ascending: false })
+          .limit(4)
+      : Promise.resolve({ data: [], error: null }),
+    supabase
+      .from("ulasan_produk")
+      .select("id, nama, rating, komentar, created_at")
+      .eq("produk_id", id)
+      .eq("tampil", true)
       .order("created_at", { ascending: false })
-      .limit(4);
+      .limit(100),
+  ]);
 
-    if (errorTerkait) {
-      throw errorTerkait;
-    }
-
-    produkTerkait = terkait || [];
-  }
+  if (hasilTerkait.error) throw hasilTerkait.error;
+  if (hasilUlasan.error) throw hasilUlasan.error;
+  const produkTerkait = hasilTerkait.data || [];
+  const daftarUlasan = hasilUlasan.data || [];
 
   return (
     <>
@@ -121,6 +130,7 @@ export default async function HalamanDetailProduk({ params }) {
           </div>
         </section>
       ) : null}
+      <UlasanProduk produkId={produk.id} ulasan={daftarUlasan} status={statusUlasan} />
     </>
   );
 }

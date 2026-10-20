@@ -52,6 +52,88 @@ create policy "admin_ubah_kategori_toko" on public.kategori_toko
 create policy "admin_hapus_kategori_toko" on public.kategori_toko
   for delete to authenticated using (true);
 
+-- Ulasan pelanggan dimoderasi sebelum tampil di publik (US-38, US-39).
+create table if not exists public.ulasan_produk (
+  id bigint generated always as identity primary key,
+  produk_id bigint not null references public.produk(id) on delete cascade,
+  nama text not null,
+  rating smallint not null check (rating between 1 and 5),
+  komentar text not null,
+  tampil boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
+alter table public.ulasan_produk enable row level security;
+
+drop policy if exists "publik_baca_ulasan_tampil" on public.ulasan_produk;
+drop policy if exists "admin_baca_semua_ulasan" on public.ulasan_produk;
+drop policy if exists "admin_ubah_ulasan" on public.ulasan_produk;
+drop policy if exists "admin_hapus_ulasan" on public.ulasan_produk;
+
+create policy "publik_baca_ulasan_tampil" on public.ulasan_produk
+  for select to anon using (tampil = true);
+create policy "admin_baca_semua_ulasan" on public.ulasan_produk
+  for select to authenticated using (true);
+create policy "admin_ubah_ulasan" on public.ulasan_produk
+  for update to authenticated using (true) with check (true);
+create policy "admin_hapus_ulasan" on public.ulasan_produk
+  for delete to authenticated using (true);
+
+-- Klik pesan hanya menyimpan ID produk dan waktu, tanpa data pengunjung (US-40).
+create table if not exists public.klik_pesan (
+  id bigint generated always as identity primary key,
+  produk_id bigint not null references public.produk(id) on delete cascade,
+  created_at timestamptz not null default now()
+);
+
+alter table public.klik_pesan enable row level security;
+
+drop policy if exists "admin_baca_klik_pesan" on public.klik_pesan;
+create policy "admin_baca_klik_pesan" on public.klik_pesan
+  for select to authenticated using (true);
+
+create or replace function public.produk_terlaris_admin()
+returns table (produk_id bigint, total_klik bigint)
+language sql
+security invoker
+set search_path = public
+as $$
+  select klik_pesan.produk_id, count(*) as total_klik
+  from public.klik_pesan
+  group by klik_pesan.produk_id
+  order by total_klik desc, klik_pesan.produk_id
+  limit 5;
+$$;
+
+revoke all on function public.produk_terlaris_admin() from public, anon;
+grant execute on function public.produk_terlaris_admin() to authenticated;
+
+-- Banner promosi yang dikelola admin (US-42).
+create table if not exists public.banner_promo (
+  id bigint generated always as identity primary key,
+  judul text not null,
+  teks text,
+  gambar_url text,
+  tautan text,
+  aktif boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+alter table public.banner_promo enable row level security;
+drop policy if exists "admin_baca_banner_promo" on public.banner_promo;
+drop policy if exists "admin_tambah_banner_promo" on public.banner_promo;
+drop policy if exists "admin_ubah_banner_promo" on public.banner_promo;
+drop policy if exists "admin_hapus_banner_promo" on public.banner_promo;
+
+create policy "admin_baca_banner_promo" on public.banner_promo
+  for select to authenticated using (true);
+create policy "admin_tambah_banner_promo" on public.banner_promo
+  for insert to authenticated with check (true);
+create policy "admin_ubah_banner_promo" on public.banner_promo
+  for update to authenticated using (true) with check (true);
+create policy "admin_hapus_banner_promo" on public.banner_promo
+  for delete to authenticated using (true);
+
 -- 2. Row Level Security
 -- Tidak ada izin untuk publik: akses langsung ke tabel dari luar aplikasi ditolak.
 -- Hanya admin yang sudah login yang boleh membaca dan mengubah data.

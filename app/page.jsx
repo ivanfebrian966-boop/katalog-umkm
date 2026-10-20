@@ -17,6 +17,7 @@ export default async function HalamanKatalog({ searchParams }) {
   const halamanAwal = Number.isSafeInteger(halamanDiminta) && halamanDiminta > 0 ? halamanDiminta : 1;
   let daftarProduk = [];
   let daftarKategori = [];
+  let bannerAktif = null;
   let jumlahProduk = 0;
   let halaman = halamanAwal;
   let pesanError = null;
@@ -35,6 +36,15 @@ export default async function HalamanKatalog({ searchParams }) {
     }
 
     daftarKategori = [...new Set(kategoriData.map((produk) => produk.kategori).filter(Boolean))];
+    const { data: banner, error: errorBanner } = await supabase
+      .from("banner_promo")
+      .select("judul, teks, gambar_url, tautan")
+      .eq("aktif", true)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (errorBanner) throw errorBanner;
+    bannerAktif = banner;
     const ambilHalaman = async (nomorHalaman) => {
       let query = supabase.from("produk").select("*", { count: "exact" }).eq("aktif", true);
 
@@ -98,6 +108,35 @@ export default async function HalamanKatalog({ searchParams }) {
         <p className="mt-3 max-w-xl text-lg text-teks-lembut">{toko.tagline}</p>
         <p className="mt-4 text-sm text-teks-lembut">{toko.jamBuka}</p>
       </section>
+      {bannerAktif ? (
+        <section className="mb-8 overflow-hidden rounded-2xl border border-garis bg-permukaan">
+          {bannerAktif.gambar_url ? (
+            <img src={bannerAktif.gambar_url} alt="" className="max-h-72 w-full object-cover" />
+          ) : null}
+          <div className="flex flex-col items-start gap-2 p-5">
+            <h2 className="text-2xl font-extrabold">{bannerAktif.judul}</h2>
+            {bannerAktif.teks ? <p className="max-w-prose text-teks-lembut">{bannerAktif.teks}</p> : null}
+            {typeof bannerAktif.tautan === "string" &&
+            (bannerAktif.tautan.startsWith("/") ||
+              (() => {
+                try {
+                  return new URL(bannerAktif.tautan).protocol === "https:";
+                } catch {
+                  return false;
+                }
+              })()) ? (
+              <a
+                href={bannerAktif.tautan}
+                target={bannerAktif.tautan.startsWith("/") ? undefined : "_blank"}
+                rel={bannerAktif.tautan.startsWith("/") ? undefined : "noopener noreferrer"}
+                className="font-semibold text-utama underline"
+              >
+                Lihat penawaran
+              </a>
+            ) : null}
+          </div>
+        </section>
+      ) : null}
 
       <section aria-labelledby="judul-produk" className="flex flex-col gap-5">
         <h2 id="judul-produk" className="text-xl font-bold">
