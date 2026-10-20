@@ -7,13 +7,14 @@ import BagikanProduk from "@/components/BagikanProduk";
 import { CatatProdukDilihat } from "@/components/TerakhirDilihat";
 import UlasanProduk from "@/components/UlasanProduk";
 import { formatRupiah } from "@/lib/format";
-import { toko } from "@/lib/toko";
 import { createServerClient } from "@/lib/supabase";
+import { getPengaturanToko } from "@/lib/toko-server";
 
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }) {
   const { id } = await params;
+  const toko = await getPengaturanToko();
   const supabase = createServerClient();
   const { data: produk, error } = await supabase
     .from("produk")

@@ -210,6 +210,29 @@ create policy "admin_ubah_banner_promo" on public.banner_promo
 create policy "admin_hapus_banner_promo" on public.banner_promo
   for delete to authenticated using (true);
 
+-- Pengaturan identitas toko yang dapat diperbarui admin (US-43).
+create table if not exists public.pengaturan_toko (
+  id smallint primary key check (id = 1),
+  nama text not null,
+  tagline text not null,
+  nomor_whatsapp text not null,
+  alamat text not null,
+  jam_buka text not null,
+  updated_at timestamptz not null default now()
+);
+
+alter table public.pengaturan_toko enable row level security;
+drop policy if exists "admin_baca_pengaturan_toko" on public.pengaturan_toko;
+drop policy if exists "admin_tambah_pengaturan_toko" on public.pengaturan_toko;
+drop policy if exists "admin_ubah_pengaturan_toko" on public.pengaturan_toko;
+
+create policy "admin_baca_pengaturan_toko" on public.pengaturan_toko
+  for select to authenticated using (true);
+create policy "admin_tambah_pengaturan_toko" on public.pengaturan_toko
+  for insert to authenticated with check (true);
+create policy "admin_ubah_pengaturan_toko" on public.pengaturan_toko
+  for update to authenticated using (true) with check (true);
+
 -- 2. Row Level Security
 -- Tidak ada izin untuk publik: akses langsung ke tabel dari luar aplikasi ditolak.
 -- Hanya admin yang sudah login yang boleh membaca dan mengubah data.

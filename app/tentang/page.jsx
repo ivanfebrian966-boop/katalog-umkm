@@ -1,11 +1,15 @@
-import { toko } from "@/lib/toko";
+import { getPengaturanToko } from "@/lib/toko-server";
 
-export const metadata = {
-  title: `Tentang ${toko.nama}`,
-  description: toko.tagline,
-};
+export async function generateMetadata() {
+  const toko = await getPengaturanToko();
+  return {
+    title: `Tentang ${toko.nama}`,
+    description: toko.tagline,
+  };
+}
 
-export default function HalamanTentang() {
+export default async function HalamanTentang() {
+  const toko = await getPengaturanToko();
   const nomorWhatsApp = String(toko.nomorWhatsApp).replace(/\D/g, "");
 
   return (

@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { toko } from "@/lib/toko";
 import { formatRupiah } from "@/lib/format";
 import { useKeranjang } from "@/components/KeranjangProvider";
 import { catatKlikPesan } from "@/app/admin/actions";
+import { useNomorWhatsAppToko } from "@/components/KonteksToko";
 
 export default function HalamanKeranjang() {
   const { items, siap, setQuantity, removeItem } = useKeranjang();
+  const nomor = String(useNomorWhatsAppToko() || "").replace(/\D/g, "");
   const total = items.reduce((jumlah, item) => jumlah + item.harga * item.jumlah, 0);
   const pesan = [
     `Halo, saya ingin memesan ${items.length} jenis produk:`,
@@ -16,7 +17,6 @@ export default function HalamanKeranjang() {
     ),
     `Total: ${formatRupiah(total)}`,
   ].join("\n");
-  const nomor = String(toko.nomorWhatsApp || "").replace(/\D/g, "");
   const urlWhatsApp = `https://wa.me/${nomor}?text=${encodeURIComponent(pesan)}`;
 
   if (!siap) {

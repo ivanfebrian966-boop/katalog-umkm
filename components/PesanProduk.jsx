@@ -1,14 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { toko } from "@/lib/toko";
 import { formatRupiah } from "@/lib/format";
 import { catatKlikPesan } from "@/app/admin/actions";
+import { useNomorWhatsAppToko } from "@/components/KonteksToko";
 
 export default function PesanProduk({ produk }) {
   const [jumlah, setJumlah] = useState(1);
   const [varian, setVarian] = useState("");
-  const nomor = String(toko.nomorWhatsApp || "").replace(/\D/g, "");
+  const nomor = String(useNomorWhatsAppToko() || "").replace(/\D/g, "");
   const hargaTampil = produk.harga_diskon ?? produk.harga;
   const detailVarian = varian.trim() ? `\nVarian/catatan: ${varian.trim()}` : "";
   const pesan = `Halo, saya mau pesan ${produk.nama} (${formatRupiah(hargaTampil)})\nJumlah: ${jumlah}${detailVarian}`;

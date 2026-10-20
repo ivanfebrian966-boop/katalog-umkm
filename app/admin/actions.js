@@ -672,3 +672,51 @@ export async function ubahStatusBanner(formData) {
   revalidatePath("/");
   redirect("/admin/banner?status=tersimpan");
 }
+
+export async function simpanPengaturanToko(formData) {
+  const supabase = await requireAdmin();
+  const nama = formData.get("nama");
+  const tagline = formData.get("tagline");
+  const nomorWhatsApp = formData.get("nomor_whatsapp");
+  const alamat = formData.get("alamat");
+  const jamBuka = formData.get("jam_buka");
+
+  if (
+    typeof nama !== "string" ||
+    !nama.trim() ||
+    nama.trim().length > 100 ||
+    typeof tagline !== "string" ||
+    !tagline.trim() ||
+    tagline.trim().length > 300 ||
+    typeof nomorWhatsApp !== "string" ||
+    !/^[1-9]\d{7,14}$/.test(nomorWhatsApp.trim()) ||
+    typeof alamat !== "string" ||
+    !alamat.trim() ||
+    alamat.trim().length > 300 ||
+    typeof jamBuka !== "string" ||
+    !jamBuka.trim() ||
+    jamBuka.trim().length > 120
+  ) {
+    redirect("/admin/pengaturan?status=input");
+  }
+
+  const { error } = await supabase.from("pengaturan_toko").upsert(
+    {
+      id: 1,
+      nama: nama.trim(),
+      tagline: tagline.trim(),
+      nomor_whatsapp: nomorWhatsApp.trim(),
+      alamat: alamat.trim(),
+      jam_buka: jamBuka.trim(),
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "id" }
+  );
+  if (error) throw error;
+
+  revalidatePath("/admin/pengaturan");
+  revalidatePath("/");
+  revalidatePath("/tentang");
+  revalidatePath("/produk");
+  redirect("/admin/pengaturan?status=tersimpan");
+}

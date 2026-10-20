@@ -1,7 +1,7 @@
 import KartuProduk from "@/components/KartuProduk";
-import { toko } from "@/lib/toko";
 import { createServerClient } from "@/lib/supabase";
 import BagianTerakhirDilihat from "@/components/TerakhirDilihat";
+import { getPengaturanToko } from "@/lib/toko-server";
 
 export const dynamic = "force-dynamic";
 
@@ -9,6 +9,7 @@ const PRODUK_PER_HALAMAN = 12;
 const PILIHAN_URUTAN = new Set(["terbaru", "termurah", "termahal"]);
 
 export default async function HalamanKatalog({ searchParams }) {
+  const konfigurasiToko = await getPengaturanToko();
   const parameter = await searchParams;
   const pencarian = typeof parameter.q === "string" ? parameter.q.trim().slice(0, 100) : "";
   const kategori = typeof parameter.kategori === "string" ? parameter.kategori.trim() : "";
@@ -103,10 +104,10 @@ export default async function HalamanKatalog({ searchParams }) {
     <>
       <section className="py-10 sm:py-14">
         <h1 className="max-w-2xl text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl">
-          {toko.nama}
+          {konfigurasiToko.nama}
         </h1>
-        <p className="mt-3 max-w-xl text-lg text-teks-lembut">{toko.tagline}</p>
-        <p className="mt-4 text-sm text-teks-lembut">{toko.jamBuka}</p>
+        <p className="mt-3 max-w-xl text-lg text-teks-lembut">{konfigurasiToko.tagline}</p>
+        <p className="mt-4 text-sm text-teks-lembut">{konfigurasiToko.jamBuka}</p>
       </section>
       {bannerAktif ? (
         <section className="mb-8 overflow-hidden rounded-2xl border border-garis bg-permukaan">
