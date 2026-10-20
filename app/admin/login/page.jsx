@@ -9,6 +9,10 @@ export default async function HalamanLogin({ searchParams }) {
       ? "Email atau password salah. Periksa kembali lalu coba lagi."
       : error === "input"
         ? "Masukkan email dan password untuk masuk."
+        : error === "rate-limit"
+          ? "Terlalu banyak percobaan masuk. Coba lagi setelah 15 menit."
+          : error === "unavailable"
+            ? "Login sementara tidak tersedia. Silakan coba lagi nanti."
         : null;
 
   return (

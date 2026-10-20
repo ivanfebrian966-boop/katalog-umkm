@@ -152,6 +152,23 @@ export async function loginAdmin(formData) {
     redirect("/admin/login?error=input");
   }
 
+  const requestHeaders = await headers();
+  const alamatIp = requestHeaders.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  const hashIp = createHash("sha256").update(alamatIp).digest("hex");
+  const rateLimitClient = createServerClient();
+  const { data: bolehLogin, error: errorRateLimit } = await rateLimitClient.rpc(
+    "allow_login_attempt",
+    { p_ip_hash: hashIp }
+  );
+
+  if (errorRateLimit) {
+    console.error("Rate limit login tidak tersedia:", errorRateLimit.message);
+    redirect("/admin/login?error=unavailable");
+  }
+  if (!bolehLogin) {
+    redirect("/admin/login?error=rate-limit");
+  }
+
   const supabase = await createSupabaseSessionClient();
   const { error } = await supabase.auth.signInWithPassword({
     email: email.trim(),
@@ -160,6 +177,14 @@ export async function loginAdmin(formData) {
 
   if (error) {
     redirect("/admin/login?error=credentials");
+  }
+
+  const { error: errorBersihkanRateLimit } = await rateLimitClient.rpc(
+    "clear_login_attempts",
+    { p_ip_hash: hashIp }
+  );
+  if (errorBersihkanRateLimit) {
+    console.error("Penghitung rate limit login tidak dapat dibersihkan:", errorBersihkanRateLimit.message);
   }
 
   redirect("/admin");

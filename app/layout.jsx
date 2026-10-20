@@ -8,6 +8,8 @@ import { BandingkanProvider } from "@/components/BandingkanProvider";
 import { toko } from "@/lib/toko";
 import { siteUrl } from "@/lib/site";
 
+export const dynamic = "force-dynamic";
+
 export const metadata = {
   metadataBase: new URL(siteUrl),
   title: toko.nama,

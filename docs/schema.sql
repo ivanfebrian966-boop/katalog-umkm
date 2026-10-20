@@ -92,6 +92,82 @@ drop policy if exists "admin_baca_klik_pesan" on public.klik_pesan;
 create policy "admin_baca_klik_pesan" on public.klik_pesan
   for select to authenticated using (true);
 
+-- Rate limit login berbasis hash IP; alamat mentah tidak disimpan.
+create table if not exists public.login_rate_limit (
+  ip_hash text primary key,
+  window_started_at timestamptz not null default now(),
+  attempt_count integer not null default 0,
+  blocked_until timestamptz
+);
+
+alter table public.login_rate_limit enable row level security;
+revoke all on public.login_rate_limit from public, anon, authenticated;
+
+create or replace function public.allow_login_attempt(p_ip_hash text)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_attempt public.login_rate_limit%rowtype;
+  v_now timestamptz := now();
+begin
+  if p_ip_hash is null or p_ip_hash !~ '^[a-f0-9]{64}$' then
+    return false;
+  end if;
+
+  delete from public.login_rate_limit
+  where window_started_at < v_now - interval '1 day';
+
+  insert into public.login_rate_limit (ip_hash, window_started_at, attempt_count)
+  values (p_ip_hash, v_now, 0)
+  on conflict (ip_hash) do nothing;
+
+  select * into v_attempt
+  from public.login_rate_limit
+  where ip_hash = p_ip_hash
+  for update;
+
+  if v_attempt.window_started_at < v_now - interval '15 minutes' then
+    update public.login_rate_limit
+    set window_started_at = v_now, attempt_count = 1, blocked_until = null
+    where ip_hash = p_ip_hash;
+    return true;
+  end if;
+
+  if v_attempt.blocked_until is not null and v_attempt.blocked_until > v_now then
+    return false;
+  end if;
+
+  if v_attempt.attempt_count >= 5 then
+    update public.login_rate_limit
+    set blocked_until = v_now + interval '15 minutes'
+    where ip_hash = p_ip_hash;
+    return false;
+  end if;
+
+  update public.login_rate_limit
+  set attempt_count = attempt_count + 1
+  where ip_hash = p_ip_hash;
+  return true;
+end;
+$$;
+
+create or replace function public.clear_login_attempts(p_ip_hash text)
+returns void
+language sql
+security definer
+set search_path = public
+as $$
+  delete from public.login_rate_limit where ip_hash = p_ip_hash;
+$$;
+
+revoke all on function public.allow_login_attempt(text) from public, anon, authenticated;
+revoke all on function public.clear_login_attempts(text) from public, anon, authenticated;
+grant execute on function public.allow_login_attempt(text) to service_role;
+grant execute on function public.clear_login_attempts(text) to service_role;
+
 create or replace function public.produk_terlaris_admin()
 returns table (produk_id bigint, total_klik bigint)
 language sql
